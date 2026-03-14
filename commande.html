@@ -260,9 +260,22 @@ tbody tr.has-qty td.td-qty input{background:#ffe0b2;border-color:var(--terra)}
       // Stocker l'email de destination pour FormSubmit
       window._destEmail = data.email || "cspoto@moulindesmoines.com";
       window._userName  = data.nom  || data.login || "";
-      // Pré-remplir l'email uniquement pour les clients (pas pour le commercial qui saisit l'email du magasin)
-      var emailField = document.getElementById("email");
-      if(emailField && data.email && data.role !== "user") emailField.value = data.email;
+      // Pré-remplir automatiquement les champs du formulaire depuis les données du compte
+      function prefill(id, val){ var el=document.getElementById(id); if(el && val) el.value = val; }
+
+      if(data.role !== "user"){
+        // Client : on pré-remplit tout depuis son compte
+        prefill("magasin",   data.nom);
+        prefill("numclient", data.numclient);
+        prefill("email",     data.email);
+        prefill("tel",       data.tel);
+        // Contact = nom affiché si disponible
+        if(data.contact) prefill("contact", data.contact);
+        else prefill("contact", data.nom);
+      } else {
+        // Commercial : seuls les champs fixes (pas email ni magasin qu'il saisit pour le client)
+        prefill("numclient", data.numclient);
+      }
       // Bouton admin visible uniquement pour role=admin
       if(data.role === "admin"){
         var adminBtn = document.getElementById("btn-admin");
