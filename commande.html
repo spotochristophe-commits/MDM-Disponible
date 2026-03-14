@@ -532,21 +532,25 @@ async function sendOrder(){
     var userName  = window._userName  || "";
     // FormSubmit : on envoie toujours vers cspoto (adresse activée)
     // Le destEmail du compte est mis en CC si différent
-    var ccList = destEmail !== "cspoto@moulindesmoines.com" ? destEmail : "";
     var subjectUser = userName ? " [" + userName + "]" : "";
-    var res=await fetch("https://formsubmit.co/ajax/cspoto@moulindesmoines.com",{
-      method:"POST",
-      headers:{"Content-Type":"application/json","Accept":"application/json"},
-      body:JSON.stringify({
+    // _cc uniquement si l'email du compte est différent de cspoto (évite _cc:"" qui bloque FormSubmit)
+    var payload = {
         _subject:"Bon de commande MDM 2026 — "+mag+" — "+today+subjectUser,
-        _cc: ccList,
         _replyto:mail,
         magasin:mag,
         compte:userName||"non identifié",
         email:mail,
         commande:buildOrderText(),
         _template:"table"
-      })
+      };
+    // Ajouter _cc seulement s'il y a un email différent de cspoto (sinon FormSubmit rejette)
+    if (destEmail && destEmail !== "cspoto@moulindesmoines.com") {
+      payload._cc = destEmail;
+    }
+    var res=await fetch("https://formsubmit.co/ajax/cspoto@moulindesmoines.com",{
+      method:"POST",
+      headers:{"Content-Type":"application/json","Accept":"application/json"},
+      body:JSON.stringify(payload)
     });
     var data=await res.json();
     if(data.success==="true"||data.success===true){
