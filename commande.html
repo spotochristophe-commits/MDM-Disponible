@@ -260,9 +260,9 @@ tbody tr.has-qty td.td-qty input{background:#ffe0b2;border-color:var(--terra)}
       // Stocker l'email de destination pour FormSubmit
       window._destEmail = data.email || "cspoto@moulindesmoines.com";
       window._userName  = data.nom  || data.login || "";
-      // Pré-remplir le champ email du formulaire avec l'email du compte
+      // Pré-remplir l'email uniquement pour les clients (pas pour le commercial qui saisit l'email du magasin)
       var emailField = document.getElementById("email");
-      if(emailField && data.email) emailField.value = data.email;
+      if(emailField && data.email && data.role !== "user") emailField.value = data.email;
       // Bouton admin visible uniquement pour role=admin
       if(data.role === "admin"){
         var adminBtn = document.getElementById("btn-admin");
@@ -536,14 +536,18 @@ async function sendOrder(){
     // _cc uniquement si l'email du compte est différent de cspoto (évite _cc:"" qui bloque FormSubmit)
     var payload = {
         _subject:"Bon de commande MDM 2026 — "+mag+" — "+today+subjectUser,
-        _replyto:mail,
+        _captcha:"false",
         magasin:mag,
         compte:userName||"non identifié",
         email:mail,
         commande:buildOrderText(),
         _template:"table"
       };
-    // Ajouter _cc seulement s'il y a un email différent de cspoto (sinon FormSubmit rejette)
+    // _replyto seulement si différent de la destination (FormSubmit bloque si identique)
+    if (mail && mail.toLowerCase() !== "cspoto@moulindesmoines.com") {
+      payload._replyto = mail;
+    }
+    // _cc seulement si email du compte différent de cspoto
     if (destEmail && destEmail !== "cspoto@moulindesmoines.com") {
       payload._cc = destEmail;
     }
