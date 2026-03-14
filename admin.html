@@ -224,6 +224,7 @@ tbody td{padding:10px 10px;font-size:12px;vertical-align:middle}
         <div class="section-card-title">
           <span>&#128101; Tous les comptes (<span id="nb-comptes">0</span>)</span>
           <button class="btn-add" onclick="openModal()">&#43; Nouveau compte</button>
+          <button class="btn-add" onclick="exportComptes()" style="background:var(--green);margin-left:6px">&#128202; Export Excel</button>
         </div>
         <div class="table-wrap">
           <table>
@@ -824,6 +825,74 @@ loadComptes();
 renderComptes();
 loadGhConfig();
 
+// ============================================
+// EXPORT EXCEL DES COMPTES
+// ============================================
+function exportComptes() {
+  if (!comptes || !comptes.length) { showToast('\u26a0 Aucun compte \u00e0 exporter.'); return; }
+  var roleLabel = { admin: 'Administrateur', user: 'Commercial', client: 'Client' };
+  var brown='#78503C',terra='#C87864',gold='#D2B469',cream='#FDF5EE',
+      green='#1A5C2E',white='#FFFFFF',orange='#FFF3E0';
+  function roleColor(r){return r==='admin'?terra:r==='user'?green:'#1565c0';}
+  function roleBg(r){return r==='admin'?'#FCE4D6':r==='user'?'#E8F5E9':'#E3F2FD';}
+  function xCell(v,type,bold,bg,color,align){
+    var st=[];
+    if(bold)  st.push('font-weight:bold');
+    if(bg)    st.push('background:'+bg);
+    if(color) st.push('color:'+color);
+    if(align) st.push('text-align:'+align);
+    var sa=st.length?' style="'+st.join(';')+'"':'';
+    var t=type==='n'?'Number':'String';
+    var v2=String(v===null||v===undefined?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    return '<Cell'+sa+'><Data ss:Type="'+t+'">'+v2+'</Data></Cell>';
+  }
+  function xs(v,b,bg,c,a){return xCell(v,'s',b,bg,c,a||'left');}
+  function xn(v,b,bg,c)  {return xCell(v,'n',b,bg,c,'center');}
+  var today=new Date().toLocaleDateString('fr-FR');
+  var rows='';
+  rows+='<Row ss:Height="26"><Cell ss:MergeAcross="5" style="background:'+brown+';color:'+white+';font-weight:bold;font-size:13pt;text-align:center"><Data ss:Type="String">MOULIN DES MOINES \u2014 Comptes utilisateurs</Data></Cell></Row>';
+  rows+='<Row ss:Height="16"><Cell ss:MergeAcross="5" style="background:'+cream+';color:#888;font-size:9pt;text-align:center"><Data ss:Type="String">Export\u00e9 le '+today+' \u2014 '+comptes.length+' compte(s)</Data></Cell></Row>';
+  rows+='<Row ss:Height="6"><Cell ss:MergeAcross="5"/></Row>';
+  var headers=['Login','Nom','R\u00f4le','Remise (%)','Email','Mot de passe'];
+  rows+='<Row ss:Height="20">';
+  headers.forEach(function(h,i){rows+=xs(h,true,brown,white,i>=3?'center':'left');});
+  rows+='</Row>';
+  comptes.forEach(function(c,i){
+    var bg=i%2===0?white:cream;
+    rows+='<Row ss:Height="18">';
+    rows+=xs(c.login||'',   true, bg,          brown);
+    rows+=xs(c.nom||'',     false,bg,           '#3a2a20');
+    rows+=xs(roleLabel[c.role]||c.role, true, roleBg(c.role), roleColor(c.role), 'center');
+    rows+=(c.remise>0)?xn(c.remise,true,orange,terra):xs('-',false,bg,'#ccc','center');
+    rows+=xs(c.email||'-',  false,bg,           '#555');
+    rows+=xs(c.password||'',false,bg,           '#888');
+    rows+='</Row>';
+  });
+  rows+='<Row ss:Height="6"><Cell ss:MergeAcross="5"/></Row>';
+  var nbC=comptes.filter(function(c){return c.role==='client';}).length;
+  var nbU=comptes.filter(function(c){return c.role==='user';}).length;
+  var nbA=comptes.filter(function(c){return c.role==='admin';}).length;
+  var nbR=comptes.filter(function(c){return c.remise>0;}).length;
+  [['Total comptes',comptes.length],['Administrateurs',nbA],['Commerciaux',nbU],['Clients',nbC],['Avec remise',nbR]].forEach(function(st){
+    rows+='<Row ss:Height="18"><Cell ss:MergeAcross="3"/>'+xs(st[0],true,cream,brown,'right')+xn(st[1],true,gold,brown)+'</Row>';
+  });
+  var cols=[100,160,110,75,180,120].map(function(w){return '<Column ss:Width="'+w+'"/>';}).join('');
+  var xml='<?xml version="1.0" encoding="UTF-8"?>\n<?mso-application progid="Excel.Sheet"?>\n'
+    +'<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">\n'
+    +'<Styles><Style ss:ID="Default"><Font ss:FontName="Calibri" ss:Size="10"/></Style></Styles>\n'
+    +'<Worksheet ss:Name="Comptes MDM">\n<Table>\n'+cols+rows+'</Table>\n</Worksheet>\n</Workbook>';
+  var blob=new Blob([xml],{type:'application/vnd.ms-excel;charset=utf-8'});
+  var a=document.createElement('a');
+  a.download='Comptes_MDM_'+today.replace(/\//g,'-')+'.xls';
+  a.href=URL.createObjectURL(blob);
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  setTimeout(function(){URL.revokeObjectURL(a.href);},1000);
+  showToast('\u2705 Export Excel t\u00e9l\u00e9charg\u00e9 ('+comptes.length+' comptes)');
+}
+
+loadComptes();
+renderComptes();
+loadGhConfig();
 </script>
 </body>
 </html>
